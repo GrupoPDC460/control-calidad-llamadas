@@ -282,7 +282,7 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 <div style="margin-top:14px"><label>Audio de la llamada (opcional · queda guardado para auditoría y coaching)</label><div class="aubox" id="aub"></div><div class="row"><label class="b s" style="margin:0">🎧 Subir audio<input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.opus,.amr,.gsm,.wma,.aac,.flac" hidden onchange="cqAudioPick(this)"></label><button class="b s" type="button" onclick="cqAudioClear()">Quitar</button></div></div>
 <div class="sg2"><div style="margin-top:14px"><label>Firma del gestor (opcional ahora; se puede subir después en Fichas)</label><div class="sigbox" id="sgb"></div>
 <div class="row"><label class="b s" style="margin:0">Subir foto de la firma<input type="file" accept="image/*" id="sgf" hidden></label><button class="b s" id="clr">Quitar</button></div></div>
-<div style="margin-top:14px"><label>Firma del evaluador (se recuerda en este dispositivo para tus próximas evaluaciones)</label><div class="sigbox" id="sgeb"></div>
+<div style="margin-top:14px"><label>Firma del evaluador (al subirla queda como tu firma predeterminada en cualquier equipo)</label><div class="sigbox" id="sgeb"></div>
 <div class="row"><label class="b s" style="margin:0">Subir foto de la firma<input type="file" accept="image/*" id="sgef" hidden></label><button class="b s" id="clre">Quitar</button></div></div>
 </div></div>
 </div><div>
@@ -339,7 +339,7 @@ function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 var $=function(s){return document.querySelector(s)};
 var RF={t:"",e:"",p:"m",k:"",o:"v"},META=1,EXP={},FIRST=1,ROOM=null,USR=null,PEERS=[],NAMES={};
-var DB=null,E=[],P=DP,LG={},S={},AF=[],T=true,SG="",SGE="",FS="",FF=1,CUR=0,tm;
+var DB=null,E=[],P=DP,LG={},S={},AF=[],T=true,SG="",SGE="",FIRMAS={},FS="",FF=1,CUR=0,tm;
 function lvl(n){return n>=90?["g","Excelente"]:n>=70?["b","Muy bien"]:n>=30?["y","Necesita mejorar"]:["r","Crítico"]}
 function raw(){return I.reduce(function(a,it){return a+(S[it[1]]==null?0:it[2]*S[it[1]])},0)}
 function pen(){return AF.reduce(function(a,i){return a+AFL[i][1]},0)}
@@ -355,7 +355,8 @@ var DEF_LG={PDC:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQQAAACfCAYAAAAf3
 function lg(k){if(!LG[k]&&DEF_LG[k])return'<img src="'+DEF_LG[k]+'" alt="'+k+'">';return LG[k]?'<img src="'+LG[k]+'" alt="'+k+'">':'<b class="wm w'+k+'">'+k+'</b>'}
 function put(o){return DB?DB.collection("evals").doc(o.id).set(o):(E=E.filter(function(r){return r.id!==o.id}).concat([o]),sv("cq_e3",E),rer(),Promise.resolve())}
 function rm(id){if(DB)return DB.collection("evals").doc(id).delete();E=E.filter(function(r){return r.id!==id});sv("cq_e3",E);rer()}
-function cfg(){clearTimeout(tm);tm=setTimeout(function(){var o={a:P.a,b:P.b,e:P.e,AVON:LG.AVON||"",PDC:LG.PDC||"",meta:META};if(DB)DB.doc("cfg/main").set(o);else{sv("cq_p3",o)}},700)}
+function firmaDef(n){return (FIRMAS&&FIRMAS[n])||ld("cq_sg_"+n,"")}
+function cfg(){clearTimeout(tm);tm=setTimeout(function(){var o={a:P.a,b:P.b,e:P.e,AVON:LG.AVON||"",PDC:LG.PDC||"",meta:META,firmas:FIRMAS};if(DB)DB.doc("cfg/main").set(o);else{sv("cq_p3",o)}},700)}
 function readImg(f,mw,png,cb){var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var w=Math.min(mw,im.width),h=im.height*w/im.width,c=document.createElement("canvas");c.width=w;c.height=h;var x=c.getContext("2d");if(!png){x.fillStyle="#fff";x.fillRect(0,0,w,h)}x.drawImage(im,0,0,w,h);cb(c.toDataURL(png?"image/png":"image/jpeg",.72))};im.src=r.result};r.readAsDataURL(f)}
 function setLogo(k,el){if(el.files[0])readImg(el.files[0],300,true,function(u){LG[k]=u;cfg();rer()})}
 function go(n){CUR=n;document.querySelectorAll(".v").forEach(function(e){e.hidden=e.id!=="v"+n});document.querySelectorAll("nav button").forEach(function(b,i){b.classList.toggle("on",i===n)});rer();scrollTo(0,0);pres()}
@@ -382,7 +383,7 @@ function draw(){
  $("#est").textContent=any?L[1]:"Sin calificar";$("#est").style.color=any?"var(--"+L[0]+")":"";
 }
 function opts(el,arr,ph){var v=el.value;el.innerHTML=arr.length?arr.map(function(x){return"<option>"+esc(x)+"</option>"}).join(""):'<option value="">'+ph+'</option>';if(arr.indexOf(v)>-1)el.value=v}
-function fillP(){opts($("#gestor"),plist($("#team").value),"Agrega gestores en Equipos");opts($("#eval"),P.e,"Agrega evaluadores en Equipos");if(!SGE){SGE=ld("cq_sg_"+$("#eval").value,"");if(SGE)sgDraw()}}
+function fillP(){opts($("#gestor"),plist($("#team").value),"Agrega gestores en Equipos");opts($("#eval"),P.e,"Agrega evaluadores en Equipos");if(!SGE){SGE=firmaDef($("#eval").value);if(SGE)sgDraw()}}
 function fillF(){opts($("#fg"),plist($("#ft").value),"Sin gestores")}
 function sgDraw(){$("#sgeb").innerHTML=SGE?'<img src="'+SGE+'" alt="firma">':'<span>Espacio para la firma<br><small>Sube una foto de la firma</small></span>';$("#sgb").innerHTML=SG?'<img src="'+SG+'" alt="firma">':'<span>Espacio para la firma<br><small>Sube una foto de la firma</small></span>'}
 function cur(){return E.filter(function(r){return r.id===FS})[0]}
@@ -440,15 +441,15 @@ function rer(){$("#lgs").innerHTML=lg("AVON")+lg("PDC");opts($("#team"),TEAMS,""
  [["tc","a"],["ti","b"],["tev","e"]].forEach(function(x){var el=$("#"+x[0]);if(document.activeElement!==el)el.value=P[x[1]].join("\n")});
  fs($("#rT"),TEAMS);var sl=P.e.slice();E.forEach(function(r){if(r.e&&sl.indexOf(r.e)<0)sl.push(r.e)});fs($("#rE"),sl);var mt=$("#meta");if(document.activeElement!==mt)mt.value=META;
  if(CUR===0)home();if(CUR===2)ficha();if(CUR===3)firm();if(CUR===4)rank();if(CUR===6&&window.dash)dash()}
-function reset(){if(window.cqAudioClear)cqAudioClear();S={};AF=[];SG="";SGE=ld("cq_sg_"+($("#eval").value||""),"");["obs","tel","pd","cod"].forEach(function(k){$("#"+k).value=""});$("#fecha").valueAsDate=new Date();sgDraw();$("#msg").textContent="";draw()}
+function reset(){if(window.cqAudioClear)cqAudioClear();S={};AF=[];SG="";SGE=firmaDef($("#eval").value||"");["obs","tel","pd","cod"].forEach(function(k){$("#"+k).value=""});$("#fecha").valueAsDate=new Date();sgDraw();$("#msg").textContent="";draw()}
 opts($("#pais"),PAISES,"");$("#team").onchange=fillP;$("#ft").onchange=function(){fillF();FS="";ficha()};$("#fg").onchange=function(){FS="";ficha()};
 [["tc","a"],["ti","b"],["tev","e"]].forEach(function(x){$("#"+x[0]).oninput=function(){P[x[1]]=this.value.split("\n").map(function(s){return s.trim()}).filter(Boolean);cfg();fillP();fillF()}});
 
 $("#sgf").onchange=function(){var f=this.files[0];if(f)readImg(f,380,false,function(u){SG=u;sgDraw()});this.value=""};
 $("#clr").onclick=function(){SG="";sgDraw()};
-$("#sgef").onchange=function(){var f=this.files[0];if(f)readImg(f,380,false,function(u){SGE=u;sv("cq_sg_"+$("#eval").value,u);sgDraw()});this.value=""};
+$("#sgef").onchange=function(){var f=this.files[0];if(f)readImg(f,380,false,function(u){SGE=u;sv("cq_sg_"+$("#eval").value,u);FIRMAS[$("#eval").value]=u;cfg();sgDraw();toast("Firma guardada como predeterminada de "+$("#eval").value)});this.value=""};
 $("#clre").onclick=function(){SGE="";sv("cq_sg_"+$("#eval").value,"");sgDraw()};
-$("#eval").onchange=function(){SGE=ld("cq_sg_"+this.value,"");sgDraw()};$("#new").onclick=reset;
+$("#eval").onchange=function(){SGE=firmaDef(this.value);sgDraw()};$("#new").onclick=reset;
 $("#save").onclick=function(){var m=$("#msg");m.style.color="";
  if(!$("#gestor").value){m.textContent="Selecciona el gestor.";return}
  if(!I.every(function(it){return S[it[1]]!=null})){m.textContent="Faltan criterios por calificar.";return}
@@ -459,7 +460,7 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
  var c=null;try{c=window.claude&&await claude.use("db")}catch(e){}
  if(c){DB=c;initLive();
   DB.collection("evals").onSnapshot(function(s){if(!FIRST)s.docChanges().forEach(function(c){if(c.type==="added"){var d=c.doc.data();toast("Nueva evaluación: "+d.g+" · "+fx(d.n))}});FIRST=0;E=s.docs.map(function(d){var o=d.data();o.id=d.id;return o}).sort(function(a,b){return(a.ts||0)-(b.ts||0)});rer()},function(){});
-  DB.doc("cfg/main").onSnapshot(function(s){var o=s.exists?s.data():null;if(o){P={a:o.a||DP.a,b:o.b||DP.b,e:o.e||DP.e};META=o.meta||1;LG={AVON:o.AVON||"",PDC:o.PDC||""};rer()}},function(){})}
+  DB.doc("cfg/main").onSnapshot(function(s){var o=s.exists?s.data():null;if(o){P={a:o.a||DP.a,b:o.b||DP.b,e:o.e||DP.e};META=o.meta||1;LG={AVON:o.AVON||"",PDC:o.PDC||""};FIRMAS=o.firmas||{};if(!SGE&&$("#eval")&&$("#eval").value){SGE=firmaDef($("#eval").value);if(SGE)sgDraw()}rer()}},function(){})}
  else{initLive();$("#md").textContent="Modo local (los datos solo se guardan en este navegador)";E=ld("cq_e3",[]);var o=ld("cq_p3",null);if(o){P=o;META=o.meta||1;LG={AVON:o.AVON||"",PDC:o.PDC||""}}rer()}
 })();
 </script><script>
@@ -610,7 +611,9 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
 (function(){
   function nrm(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
   window.cqEnforce = function(){
-    var u = window.cqUser && cqUser(); if (!u || u.tipo === 'evaluador'){ ['ft','fg'].forEach(function(id){ var el = document.getElementById(id); if (el) el.disabled = false; }); return; }
+    var u = window.cqUser && cqUser(); if (!u || u.tipo === 'evaluador'){ ['ft','fg'].forEach(function(id){ var el = document.getElementById(id); if (el) el.disabled = false; });
+      var ev = document.getElementById('eval'); if (u && ev && !ev.dataset.mio && [].some.call(ev.options, function(o){ return nrm(o.value) === nrm(u.nombre); })){ [].forEach.call(ev.options, function(o){ if (nrm(o.value) === nrm(u.nombre)) ev.value = o.value; }); ev.dataset.mio = '1'; SGE = firmaDef(ev.value); sgDraw(); }
+      return; }
     var team = null, name = null;
     TEAMS.forEach(function(t){ plist(t).forEach(function(g){ if (!team && nrm(g) === nrm(u.nombre)){ team = t; name = g; } }); });
     if (!team){ team = (E[0] && E[0].t) || TEAMS[0]; name = (E[0] && E[0].g) || u.nombre; }

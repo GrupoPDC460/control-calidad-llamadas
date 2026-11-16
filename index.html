@@ -145,6 +145,9 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 
 .ce-box{display:grid;grid-template-columns:minmax(220px,1.4fr) auto auto;gap:12px;align-items:end}@media(max-width:700px){.ce-box{grid-template-columns:1fr}}
 .ce-chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--tx);margin:0 0 10px;white-space:nowrap}.ce-chk input{width:auto}
+
+.eml-aviso{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,22,80,.45);padding:20px}.eml-aviso[hidden]{display:none}
+.eml-box{background:var(--card);color:var(--tx);border-radius:18px;padding:20px 22px;max-width:440px;border-top:5px solid #FF5100;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}.eml-box p,.eml-box ol{font-size:14px;margin:8px 0}.eml-box small{color:var(--mu)}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -721,16 +724,47 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
         .then(function(x){ return x.json(); }).then(function(res){
           if (res.ok){ toast('✉️ Ficha enviada a '+para+'.'); return; }
           if (res.error === 'sin_proveedor'){
-            doc.save(nombreArchivo(r));
-            var asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n);
-            var cuerpo = 'Hola '+r.g+',\n\nTe comparto el resultado de tu evaluación de calidad de la llamada del '+r.d+' (nota '+fx(r.n)+' / 100). Adjunto el PDF con el detalle.\n\nTambién puedes verla, escuchar el audio y firmarla en https://control-calidad-llamadas.vercel.app con tu nombre completo y tu correo.\n\nSaludos,\n'+((cqUser()||{}).nombre||'');
-            location.href = 'mailto:'+encodeURIComponent(para)+'?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
-            toast('Se descargó el PDF y se abrió tu correo: adjúntalo y envía. (El envío automático se activa al configurar el correo del sistema.)');
+            // Sin envío automático: se arma un CORREO LISTO (.eml) con el PDF ADJUNTO. Al abrirlo, Outlook lo muestra como
+            // mensaje nuevo desde tu propia cuenta, con destinatario, asunto, texto y PDF; solo falta dar Enviar.
+            var me = cqUser() || {}, asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n);
+            var html = '<div style="font-family:Arial,sans-serif;color:#0F141B;max-width:560px"><div style="background:#00216F;color:#fff;padding:14px 18px;border-bottom:4px solid #FF5100"><b style="font-size:17px">Control y Calidad de Llamadas</b><br><span style="font-size:12px">Grupo PDC · AVON</span></div>'
+              + '<div style="padding:16px 18px"><p>Hola <b>'+esc(r.g)+'</b>,</p><p>Te comparto el resultado de tu evaluación de calidad de la llamada del <b>'+esc(r.d)+'</b>.</p>'
+              + '<p style="font-size:30px;margin:8px 0;color:#FF5100"><b>'+fx(r.n)+'</b><span style="font-size:15px;color:#606060"> / 100</span></p>'
+              + '<p>En el PDF adjunto está el detalle de cada criterio y las observaciones. También puedes verla, escuchar el audio y firmarla en <a href="https://control-calidad-llamadas.vercel.app">Control y Calidad de Llamadas</a> con tu nombre completo y tu correo.</p>'
+              + '<p>Saludos,<br><b>'+esc(me.nombre||'')+'</b></p></div></div>';
+            var eml = cqArmarEml({para: para, cc: (document.getElementById('ceCopia')||{}).checked ? me.email : '', asunto: asunto, html: html, adjunto: nombreArchivo(r), b64: b64});
+            var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], {type:'message/rfc822'}));
+            a.download = ('Correo para '+r.g+' - '+r.d+'.eml').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\\/:*?"<>|]/g,'-');
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+            cqAvisoEml(para);
             return;
           }
           toast('No se pudo enviar ('+(res.error||'error')+').');
         });
     }).catch(function(){ toast('No se pudo generar el PDF.'); });
+  };
+
+  // Correo .eml (borrador sin enviar) con el PDF adjunto
+  function b64utf8(t){ return btoa(unescape(encodeURIComponent(t))); }
+  function wrap76(t){ return t.replace(/(.{76})/g, '$1\r\n'); }
+  function hdr(t){ return /^[\x20-\x7e]*$/.test(t) ? t : '=?UTF-8?B?'+b64utf8(t)+'?='; }
+  window.cqArmarEml = function(o){
+    var bnd = '----=_PDC_' + Date.now().toString(36), ascii = o.adjunto.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7e]/g,'_');
+    var L = ['To: '+o.para];
+    if (o.cc) L.push('Cc: '+o.cc);
+    L.push('Subject: '+hdr(o.asunto), 'X-Unsent: 1', 'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="'+bnd+'"', '',
+      '--'+bnd, 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64utf8(o.html)), '',
+      '--'+bnd, 'Content-Type: application/pdf; name="'+ascii+'"', 'Content-Transfer-Encoding: base64',
+      'Content-Disposition: attachment; filename="'+ascii+'"; filename*=UTF-8\'\''+encodeURIComponent(o.adjunto), '', wrap76(o.b64), '', '--'+bnd+'--', '');
+    return L.join('\r\n');
+  };
+  window.cqAvisoEml = function(para){
+    var m = document.getElementById('emlAviso');
+    if (!m){ m = document.createElement('div'); m.id = 'emlAviso'; m.className = 'eml-aviso'; document.body.appendChild(m); }
+    m.innerHTML = '<div class="eml-box"><b>✉️ Correo listo para '+esc(para)+'</b><p>Se descargó un archivo de correo <b>.eml</b> que ya trae el <b>PDF adjunto</b>, el destinatario, el asunto y el mensaje.</p>'
+      + '<ol><li>Ábrelo desde las descargas del navegador (doble clic).</li><li>Se abre en <b>Outlook</b> como mensaje nuevo desde tu cuenta.</li><li>Revisa y da <b>Enviar</b>.</li></ol>'
+      + '<small>El envío 100% automático se activa cuando TI configure el correo del sistema.</small><div style="text-align:right;margin-top:10px"><button class="b" type="button" onclick="this.closest(\'.eml-aviso\').hidden=true">Entendido</button></div></div>';
+    m.hidden = false;
   };
   // Prellenar el correo del evaluado al elegir el gestor
   window.cqCargarCorreos = function(){ var t = window.cqTok && cqTok(), u = window.cqUser && cqUser(); if (!t || !u || u.tipo !== 'evaluador') return Promise.resolve();

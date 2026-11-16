@@ -142,6 +142,9 @@ body.cq-locked nav, body.cq-locked .v{visibility:hidden}
 body.cq-gestor nav button:not(:nth-child(3)){display:none}
 .adm-only{display:none} body.cq-admin .adm-only{display:block}
 .acc-t td,.acc-t th{text-align:left!important;white-space:normal!important}.acc-t select{padding:5px 8px;font-size:12.5px}.acc-ad{background:#FF5100;color:#fff;border-radius:99px;padding:0 6px;font-size:10px;font-weight:800}
+
+.ce-box{display:grid;grid-template-columns:minmax(220px,1.4fr) auto auto;gap:12px;align-items:end}@media(max-width:700px){.ce-box{grid-template-columns:1fr}}
+.ce-chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--tx);margin:0 0 10px;white-space:nowrap}.ce-chk input{width:auto}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -220,6 +223,7 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
     var md = document.getElementById('md'); if (md) md.textContent = !u ? 'Inicia sesión para continuar' : (u.tipo === 'evaluador' ? '● Datos compartidos en línea · cada cambio queda registrado a tu nombre' : '● Tus fichas de calidad · aquí puedes revisarlas, escuchar el audio y firmarlas');
     if (u && window.cqEnforce) setTimeout(window.cqEnforce, 0);
     if (u && u.admin && window.cqAccesos) setTimeout(window.cqAccesos, 0);
+    if (u && u.tipo === 'evaluador' && window.cqCargarCorreos) setTimeout(window.cqCargarCorreos, 0);
   }
   function openLogin(msg){ var o = document.getElementById('cqLogin'); if (!o) return; o.hidden = false; document.getElementById('cqMsg').textContent = msg || ''; loadNames();
     setTimeout(function(){ var n = document.getElementById('cqName'), e = document.getElementById('cqEmail'); (!n.value ? n : (!e.value ? e : document.getElementById('cqPass'))).focus(); }, 30); }
@@ -266,6 +270,7 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 <div><label>Evaluador (supervisor)</label><select id="eval"></select></div><div><label>Fecha de la llamada</label><input id="fecha" type="date"></div>
 <div><label>Número de contacto</label><input id="tel" type="tel" placeholder="Ej. 5555-5555"></div><div><label>País</label><select id="pais"></select></div>
 <div><label>PD</label><input id="pd" placeholder="PD"></div><div><label>Código</label><input id="cod" placeholder="Código"></div>
+<div class="full ce-box"><div><label>Correo del evaluado (recibe su ficha en PDF)</label><input id="ce" type="email" placeholder="Se llena solo al elegir el gestor"></div><label class="ce-chk"><input type="checkbox" id="ceEnviar" checked> Enviar la ficha en PDF al guardar</label><label class="ce-chk"><input type="checkbox" id="ceCopia"> Enviarme copia</label></div>
 </div></div></div>
 <div class="wrap"><div>
 <div class="card"><h2 id="ct">Calificación</h2><div id="crit"></div>
@@ -288,7 +293,7 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 <div class="v" id="v2" hidden><div class="one">
 <div class="card np"><div class="f"><div><label>Equipo</label><select id="ft"></select></div><div><label>Gestor</label><select id="fg"></select></div></div>
 <label style="margin-top:12px">Elige la calificación que quieres ver o imprimir</label><div id="fl"></div>
-<div class="row"><button class="b" onclick="print()">Imprimir esta ficha</button><button class="b s" id="dlb" onclick="dl()">Descargar ficha (HTML)</button><label class="b s" style="margin:0"><span class="ev-only">Subir firma del gestor</span><span class="ge-only">✍️ Subir mi firma</span><input type="file" accept="image/*" hidden onchange="sign(this)"></label><label class="b s ev-only" style="margin:0">🎧 Subir audio<input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.opus,.amr,.gsm,.wma,.aac,.flac" hidden onchange="cqAudioFicha(this)"></label><label class="b s ev-only" style="margin:0">Subir firma del evaluador<input type="file" accept="image/*" hidden onchange="signE(this)"></label><span class="ev-only" style="display:inline-flex;gap:6px;align-items:center"><select id="mv" style="width:auto"></select><button class="b s" onclick="mover()">Cambiar mes de evaluación</button></span><button class="b s ev-only" onclick="del()">Eliminar</button></div><div class="msg" id="fm"></div></div>
+<div class="row"><button class="b" onclick="print()">Imprimir esta ficha</button><button class="b s" id="dlb" onclick="cqDescargarPdf()">📄 Descargar PDF</button><button class="b s ev-only" onclick="cqEnviarFicha(FS,false)">✉️ Enviar por correo</button><label class="b s" style="margin:0"><span class="ev-only">Subir firma del gestor</span><span class="ge-only">✍️ Subir mi firma</span><input type="file" accept="image/*" hidden onchange="sign(this)"></label><label class="b s ev-only" style="margin:0">🎧 Subir audio<input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.opus,.amr,.gsm,.wma,.aac,.flac" hidden onchange="cqAudioFicha(this)"></label><label class="b s ev-only" style="margin:0">Subir firma del evaluador<input type="file" accept="image/*" hidden onchange="signE(this)"></label><span class="ev-only" style="display:inline-flex;gap:6px;align-items:center"><select id="mv" style="width:auto"></select><button class="b s" onclick="mover()">Cambiar mes de evaluación</button></span><button class="b s ev-only" onclick="del()">Eliminar</button></div><div class="msg" id="fm"></div></div>
 <div class="card pk" id="ficha"></div></div></div>
 
 <div class="v" id="v3" hidden><div class="one"><div class="card"><h2>Fichas firmadas y pendientes</h2><div class="tg" style="max-width:420px"><button id="f1" onclick="FF=1;firm()">Firmadas</button><button id="f0" onclick="FF=0;firm()">Pendientes de firma</button></div><div id="fi" style="margin-top:12px"></div></div></div></div>
@@ -387,7 +392,7 @@ function ficha(){var t=$("#ft").value,g=$("#fg").value,a=ev(t,g);
  +'<div class="kp"><div><b>'+fx(r.n)+'</b><small>Nota / 100</small></div><div><b style="color:var(--'+L[0]+')">'+L[1]+'</b><small>Nivel</small></div><div><b style="font-size:15px">'+esc(r.d)+'</b><small>Fecha</small></div><div><b style="font-size:12px">'+esc(r.k)+' · '+esc(r.pa)+'</b><small>Tipo · país</small></div><div><b style="font-size:12px">'+esc(r.tel||"–")+'</b><small>Número de contacto</small></div><div><b style="font-size:15px">'+esc(r.pd||"–")+'</b><small>PD</small></div><div><b style="font-size:15px">'+esc(r.cod||"–")+'</b><small>Código</small></div></div>'
  +(rows?'<table class="tn tf"><thead><tr><th>Criterio</th><th>Valor</th><th>Obtenido</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr class="pn"><td>Penalización auto-fail</td><td></td><td>'+(r.pn?"-"+r.pn:"0")+'</td></tr><tr><td>NOTA FINAL</td><td>100</td><td>'+fx(r.n)+'</td></tr></tfoot></table>':"")
  +(r.af&&r.af.length?'<p style="color:var(--r)"><b>Auto-fail:</b> '+r.af.map(function(i){return esc(AFL[i][0])}).join("; ")+'</p>':"")
- +'<p><b>Observaciones:</b> '+esc(r.o||"Sin observaciones")+'</p><div id="fau"></div><div class="sgs"><div><label>Firma del gestor (de enterado)</label><div class="sigbox">'+(r.sg?'<img src="'+r.sg+'" alt="firma">':"")+'</div><small>'+esc(r.g)+'</small></div><div><label>Firma del evaluador</label><div class="sigbox">'+(r.sge?'<img src="'+r.sge+'" alt="firma">':"")+'</div><small>'+esc(r.e)+'</small></div></div>';if(r&&window.cqAudioRender)cqAudioRender(r)}
+ +'<p><b>Observaciones:</b> '+esc(r.o||"Sin observaciones")+'</p><div id="fau"></div>'+(r.env?'<p class="np" style="color:var(--mu);font-size:12.5px;margin:10px 0 0">✉️ Ficha enviada a <b>'+esc(r.env.para)+'</b> el '+esc(new Date(r.env.en).toLocaleString("es-GT"))+'</p>':(r.ce?'<p class="np" style="color:var(--mu);font-size:12.5px;margin:10px 0 0">Correo del evaluado: '+esc(r.ce)+' · aún no enviada</p>':''))+'<div class="sgs"><div><label>Firma del gestor (de enterado)</label><div class="sigbox">'+(r.sg?'<img src="'+r.sg+'" alt="firma">':"")+'</div><small>'+esc(r.g)+'</small></div><div><label>Firma del evaluador</label><div class="sigbox">'+(r.sge?'<img src="'+r.sge+'" alt="firma">':"")+'</div><small>'+esc(r.e)+'</small></div></div>';if(r&&window.cqAudioRender)cqAudioRender(r)}
 function sign(el){var r=cur(),f=el.files[0];if(!r||!f)return;readImg(f,380,false,function(u){var o={};for(var k in r)o[k]=r[k];o.sg=u;put(o).catch(function(){$("#fm").textContent="Inicia sesión para guardar cambios."})});el.value=""}
 function signE(el){var r=cur(),f=el.files[0];if(!r||!f)return;readImg(f,380,false,function(u){var o={};for(var k in r)o[k]=r[k];o.sge=u;sv("cq_sg_"+r.e,u);put(o).catch(function(){$("#fm").textContent="Inicia sesión para guardar cambios."})});el.value=""}
 function mover(){var r=cur(),v=$("#mv").value,m=$("#fm");if(!r||v.indexOf("ym:")!==0)return;var q=v.slice(3).split("-"),o={};for(var k in r)o[k]=r[k];o.ts=new Date(+q[0],+q[1]-1,15,12).getTime();put(o).then(function(){m.style.color="var(--g)";m.textContent="Evaluación movida a "+$("#mv").selectedOptions[0].text+"."}).catch(function(){m.style.color="";m.textContent="Inicia sesión para guardar cambios."})}
@@ -445,7 +450,7 @@ $("#save").onclick=function(){var m=$("#msg");m.style.color="";
  if(!$("#gestor").value){m.textContent="Selecciona el gestor.";return}
  if(!I.every(function(it){return S[it[1]]!=null})){m.textContent="Faltan criterios por calificar.";return}
  var t=$("#team").value,g=$("#gestor").value,id="e"+Date.now(),s={};for(var k in S)s[k]=S[k];
- cqAttachAudio(id).then(function(au){return put({au:au,id:id,ts:Date.now(),g:g,t:t,e:$("#eval").value,pa:$("#pais").value,tel:$("#tel").value,pd:$("#pd").value,cod:$("#cod").value,d:$("#fecha").value,k:T?"Titular":"Tercero",n:nota(),pn:pen(),o:$("#obs").value,s:s,af:AF.slice(),sg:SG,sge:SGE})}).then(function(){reset();FS=id;$("#ft").value=t;fillF();$("#fg").value=g;go(2)}).catch(function(){if(m.textContent.indexOf("No se pudo subir")!==0)m.textContent="Para guardar, inicia sesión con tu correo (botón arriba a la derecha)."})};
+ var CE=(($("#ce")||{}).value||"").trim(),ENV=!!($("#ceEnviar")||{}).checked;cqAttachAudio(id).then(function(au){return put({au:au,ce:CE,id:id,ts:Date.now(),g:g,t:t,e:$("#eval").value,pa:$("#pais").value,tel:$("#tel").value,pd:$("#pd").value,cod:$("#cod").value,d:$("#fecha").value,k:T?"Titular":"Tercero",n:nota(),pn:pen(),o:$("#obs").value,s:s,af:AF.slice(),sg:SG,sge:SGE})}).then(function(){reset();FS=id;$("#ft").value=t;fillF();$("#fg").value=g;go(2);if(window.cqPrellenarCorreo){var c=$("#ce");if(c){c.dataset.auto="1";cqPrellenarCorreo()}}if(ENV&&CE&&window.cqEnviarFicha)setTimeout(function(){cqEnviarFicha(id,true)},300)}).catch(function(){if(m.textContent.indexOf("No se pudo subir")!==0)m.textContent="Para guardar, inicia sesión con tu correo (botón arriba a la derecha)."})};
 $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
 (async function(){
  var c=null;try{c=window.claude&&await claude.use("db")}catch(e){}
@@ -639,6 +644,106 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
         .catch(function(err){ toast(/correo_invalido/.test(err.message)?'Correo no válido.':'No se pudo guardar.'); });
     };
   });
+})();
+
+</script>
+<script>
+/* ===================== FICHA EN PDF + ENVÍO POR CORREO ===================== */
+(function(){
+  var FN = 'https://mbbmpemzheqbvvganphs.supabase.co/functions/v1/cq-enviar', KEY = 'sb_publishable_2vtaLy9LCX--PVCeU-4QfQ_YcHQ_VZf';
+  var libP = null, correos = null;
+  function loadScript(src){ return new Promise(function(res, rej){ var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+  function libs(){ if (!libP) libP = loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+      .then(function(){ return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); }).catch(function(e){ libP = null; throw e; });
+    return libP; }
+  function imgSize(src){ return new Promise(function(res){ var im = new Image(); im.onload = function(){ res({w:im.naturalWidth, h:im.naturalHeight}); }; im.onerror = function(){ res(null); }; im.src = src; }); }
+  function toPng(src){ return new Promise(function(res){ if (!src || src.indexOf('data:image/png') === 0 || src.indexOf('data:image/jpeg') === 0) return res(src);
+    var im = new Image(); im.onload = function(){ var c = document.createElement('canvas'); c.width = im.naturalWidth || 300; c.height = im.naturalHeight || 100; c.getContext('2d').drawImage(im, 0, 0); res(c.toDataURL('image/png')); }; im.onerror = function(){ res(null); }; im.src = src; }); }
+  var NIV = {g:[30,142,74], b:[47,111,214], y:[199,119,0], r:[206,57,44]};
+  // Construye el PDF de una evaluación (marca PDC)
+  window.cqFichaPdf = function(r){
+    return libs().then(function(){ return Promise.all([toPng((document.querySelector('.brandbar img')||{}).src), toPng(r.sg), toPng(r.sge), toPng(LG.AVON || '')]); }).then(function(im){
+      var jsPDF = window.jspdf.jsPDF, doc = new jsPDF({unit:'pt', format:'letter'}), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
+      doc.setFillColor(0,33,111); doc.rect(0,0,W,78,'F'); doc.setFillColor(255,81,0); doc.rect(0,78,W,5,'F');
+      if (im[0]) doc.addImage(im[0], 'PNG', M, 14, 82, 50);
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.text('Ficha de calidad de llamada', M+100, 38);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Control y Calidad de Llamadas · AVON · Grupo PDC', M+100, 56);
+      if (im[3]) { try{ doc.setFillColor(255,255,255); doc.roundedRect(W-M-96, 20, 96, 38, 6, 6, 'F'); doc.addImage(im[3], 'PNG', W-M-90, 24, 84, 30); }catch(e){} }
+      var y = 108, L = lvl(r.n), c = NIV[L[0]] || [0,33,111];
+      doc.setTextColor(0,33,111); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text(String(r.g||''), M, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(96,96,96); doc.text((r.t||'')+'  ·  Evaluador: '+(r.e||''), M, y+16);
+      doc.setTextColor(255,81,0); doc.setFont('helvetica','bold'); doc.setFontSize(34); doc.text(String(fx(r.n)), W-M-70, y+10, {align:'right'});
+      doc.setFontSize(12); doc.setTextColor(96,96,96); doc.text('/ 100', W-M, y+10, {align:'right'});
+      doc.setFillColor(c[0],c[1],c[2]); doc.roundedRect(W-M-120, y+18, 120, 18, 9, 9, 'F'); doc.setTextColor(255,255,255); doc.setFontSize(10); doc.text(L[1], W-M-60, y+30, {align:'center'});
+      y += 52;
+      var datos = [['Fecha de la llamada', r.d||'–'], ['Tipo de contacto', r.k||'–'], ['País', r.pa||'–'], ['Número de contacto', r.tel||'–'], ['PD', r.pd||'–'], ['Código', r.cod||'–']];
+      doc.autoTable({startY:y, theme:'plain', margin:{left:M, right:M}, body:[datos.slice(0,3).map(function(x){ return x[0]+': '+x[1]; }), datos.slice(3).map(function(x){ return x[0]+': '+x[1]; })],
+        styles:{fontSize:9.5, textColor:[15,20,27], cellPadding:4, fillColor:[245,247,250]}, columnStyles:{0:{cellWidth:(W-2*M)/3},1:{cellWidth:(W-2*M)/3}}});
+      y = doc.lastAutoTable.finalY + 10;
+      var rows = I.map(function(it){ var v = r.s ? r.s[it[1]] : null; return [it[1], (r.k==='Tercero' ? (it[5]||it[3]) : it[3]), String(it[2]), v==null ? '–' : String(fx(it[2]*v))]; });
+      doc.autoTable({startY:y, margin:{left:M, right:M}, head:[['#','Criterio','Valor','Obtenido']], body:rows,
+        foot:[['','Penalización auto-fail','', r.pn ? '-'+r.pn : '0'], ['','NOTA FINAL','100', String(fx(r.n))]],
+        styles:{fontSize:9.5, cellPadding:4.5, textColor:[15,20,27]}, headStyles:{fillColor:[0,33,111], textColor:255}, footStyles:{fillColor:[238,242,248], textColor:[0,33,111], fontStyle:'bold'},
+        alternateRowStyles:{fillColor:[247,249,252]}, columnStyles:{0:{cellWidth:34}, 2:{halign:'center', cellWidth:50}, 3:{halign:'center', cellWidth:62}},
+        didParseCell:function(dd){ if (dd.section==='foot' && dd.row.index===0) dd.cell.styles.textColor = [206,57,44]; }});
+      y = doc.lastAutoTable.finalY + 14;
+      function bloque(titulo, texto, color){ if (y > H-120){ doc.addPage(); y = M; } doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(color[0],color[1],color[2]); doc.text(titulo, M, y);
+        doc.setFont('helvetica','normal'); doc.setTextColor(15,20,27); var ls = doc.splitTextToSize(texto, W-2*M); doc.text(ls, M, y+14); y += 18 + ls.length*12; }
+      if (r.af && r.af.length) bloque('Auto-fail', r.af.map(function(i){ return '• '+AFL[i][0]+' (-'+AFL[i][1]+')'; }).join('\n'), [206,57,44]);
+      bloque('Observaciones y plan de mejora', r.o || 'Sin observaciones.', [0,33,111]);
+      if (r.au) bloque('Audio de la llamada', (r.au.nombre||'audio')+' · disponible en la plataforma con tu usuario.', [0,33,111]);
+      if (y > H-150){ doc.addPage(); y = M; }
+      y += 6; var bw = (W-2*M-20)/2;
+      [[im[1], 'Firma del gestor (de enterado)', r.g], [im[2], 'Firma del evaluador', r.e]].forEach(function(f, k){ var x = M + k*(bw+20);
+        doc.setDrawColor(125,191,230); doc.setLineDashPattern([4,3],0); doc.roundedRect(x, y, bw, 78, 6, 6); doc.setLineDashPattern([],0);
+        if (f[0]){ try{ doc.addImage(f[0], 'PNG', x+10, y+6, bw-20, 66, undefined, 'FAST'); }catch(e){} }
+        doc.setFontSize(8.5); doc.setTextColor(96,96,96); doc.text(f[1]+' · '+(f[2]||''), x, y+92); });
+      var pages = doc.getNumberOfPages();
+      for (var p = 1; p <= pages; p++){ doc.setPage(p); doc.setFontSize(8); doc.setTextColor(96,96,96);
+        doc.text('Grupo PDC · Control y Calidad de Llamadas · generado '+new Date().toLocaleDateString('es-GT'), M, H-20); doc.text('Página '+p+' de '+pages, W-M, H-20, {align:'right'}); }
+      return doc;
+    });
+  };
+  function nombreArchivo(r){ return ('Ficha de calidad - '+(r.g||'')+' - '+(r.d||'')+'.pdf').replace(/[\\/:*?"<>|]/g,'-'); }
+  window.cqDescargarPdf = function(){ var r = cur(); if (!r) return; toast('Generando PDF…');
+    cqFichaPdf(r).then(function(doc){ doc.save(nombreArchivo(r)); }).catch(function(){ toast('No se pudo generar el PDF.'); }); };
+  // Enviar por correo (evaluadores)
+  window.cqEnviarFicha = function(id, auto){
+    var r = E.filter(function(x){ return x.id === id; })[0] || cur(); if (!r) return;
+    var para = (r.ce || '').trim();
+    if (!auto){ para = prompt('Correo del evaluado para enviarle el PDF:', para || (correos && correos[r.g]) || ''); if (!para) return; }
+    if (!para) return;
+    var tok = window.cqTok && cqTok(); if (!tok) return;
+    toast('Generando y enviando el PDF a '+para+'…');
+    cqFichaPdf(r).then(function(doc){
+      var b64 = doc.output('datauristring').split(',')[1];
+      return fetch(FN, {method:'POST', headers:{'Content-Type':'application/json', apikey:KEY}, body: JSON.stringify({token:tok, id:r.id, para:para, pdf:b64, copia: (document.getElementById('ceCopia')||{}).checked ? 'si' : 'no'})})
+        .then(function(x){ return x.json(); }).then(function(res){
+          if (res.ok){ toast('✉️ Ficha enviada a '+para+'.'); return; }
+          if (res.error === 'sin_proveedor'){
+            doc.save(nombreArchivo(r));
+            var asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n);
+            var cuerpo = 'Hola '+r.g+',\n\nTe comparto el resultado de tu evaluación de calidad de la llamada del '+r.d+' (nota '+fx(r.n)+' / 100). Adjunto el PDF con el detalle.\n\nTambién puedes verla, escuchar el audio y firmarla en https://control-calidad-llamadas.vercel.app con tu nombre completo y tu correo.\n\nSaludos,\n'+((cqUser()||{}).nombre||'');
+            location.href = 'mailto:'+encodeURIComponent(para)+'?subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
+            toast('Se descargó el PDF y se abrió tu correo: adjúntalo y envía. (El envío automático se activa al configurar el correo del sistema.)');
+            return;
+          }
+          toast('No se pudo enviar ('+(res.error||'error')+').');
+        });
+    }).catch(function(){ toast('No se pudo generar el PDF.'); });
+  };
+  // Prellenar el correo del evaluado al elegir el gestor
+  window.cqCargarCorreos = function(){ var t = window.cqTok && cqTok(), u = window.cqUser && cqUser(); if (!t || !u || u.tipo !== 'evaluador') return Promise.resolve();
+    return cqRpc('cq_correos', {p_token:t}).then(function(m){ correos = m || {}; prellenar(); }).catch(function(){}); };
+  function prellenar(){ var g = document.getElementById('gestor'), ce = document.getElementById('ce'); if (!g || !ce || !correos) return;
+    if (!ce.value || ce.dataset.auto === '1'){ ce.value = correos[g.value] || ''; ce.dataset.auto = '1'; } }
+  document.addEventListener('DOMContentLoaded', function(){
+    var g = document.getElementById('gestor'), t = document.getElementById('team'), ce = document.getElementById('ce');
+    if (g) g.addEventListener('change', function(){ if (ce) ce.dataset.auto = '1'; prellenar(); });
+    if (t) t.addEventListener('change', function(){ setTimeout(function(){ if (ce) ce.dataset.auto = '1'; prellenar(); }, 0); });
+    if (ce) ce.addEventListener('input', function(){ ce.dataset.auto = '0'; });
+  });
+  window.cqPrellenarCorreo = prellenar;
 })();
 
 </script>

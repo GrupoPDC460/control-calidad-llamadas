@@ -150,8 +150,10 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 .eml-box{background:var(--card);color:var(--tx);border-radius:18px;padding:20px 22px;max-width:440px;border-top:5px solid #FF5100;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}.eml-box p,.eml-box ol{font-size:14px;margin:8px 0}.eml-box small{color:var(--mu)}
 
 .ext-tag{display:inline-block;background:var(--bg);border:1px solid var(--bd);color:var(--ac);font-weight:800;border-radius:99px;padding:0 7px;font-size:11px}
-.ext-chip{display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:#00216F;color:#fff;border-radius:99px;padding:3px 11px;font-size:12px;font-weight:800}
-.ext-chip[hidden]{display:none}.ext-chip button{border:0;background:rgba(255,255,255,.2);color:#fff;border-radius:99px;font:inherit;font-size:11px;padding:1px 8px;cursor:pointer}
+.ext-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:#00216F;color:#fff;border-radius:12px;padding:9px 14px;font-size:13px;margin:2px 0 4px;box-shadow:inset 0 -3px 0 #FF5100}
+.ext-bar[hidden]{display:none}.eb-i{white-space:nowrap}.eb-i b{font-size:15px;color:#fff}
+.eb-b{border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:99px;font:inherit;font-size:11.5px;font-weight:800;padding:3px 10px;cursor:pointer;white-space:nowrap}.eb-b:hover{background:#FF5100}
+.eb-sep{width:1px;height:18px;background:rgba(255,255,255,.3)}
 .ext-t td{padding:5px 8px!important}.ext-t input{width:90px;padding:5px 8px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -277,8 +279,9 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 <div><label>Equipo</label><select id="team"></select></div><div><label>Gestor evaluado</label><select id="gestor"></select></div>
 <div><label>Evaluador (supervisor)</label><select id="eval"></select></div><div><label>Fecha de la llamada</label><input id="fecha" type="date"></div>
 <div><label>Número de contacto</label><input id="tel" type="tel" placeholder="Ej. 5555-5555"></div><div><label>País</label><select id="pais"></select></div>
+<div class="full ext-bar" id="extEval" hidden></div>
 <div><label>PD</label><input id="pd" placeholder="PD"></div><div><label>Código</label><input id="cod" placeholder="Código"></div>
-<div class="full ce-box"><div><label>Correo del evaluado (recibe su ficha en PDF)</label><input id="ce" type="email" placeholder="Se llena solo al elegir el gestor"></div><label class="ce-chk"><input type="checkbox" id="ceEnviar" checked> Enviar la ficha en PDF al guardar</label><label class="ce-chk"><input type="checkbox" id="ceCopia"> Enviarme copia</label></div>
+<div class="full ce-box"><div><label>Correo del evaluado (recibe su ficha en PDF)</label><input id="ce" type="email" autocomplete="off" name="correo-evaluado-cq" placeholder="Se llena solo al elegir el gestor"></div><label class="ce-chk"><input type="checkbox" id="ceEnviar" checked> Enviar la ficha en PDF al guardar</label><label class="ce-chk"><input type="checkbox" id="ceCopia"> Enviarme copia</label></div>
 </div></div></div>
 <div class="wrap"><div>
 <div class="card"><h2 id="ct">Calificación</h2><div id="crit"></div>
@@ -462,7 +465,7 @@ $("#save").onclick=function(){var m=$("#msg");m.style.color="";
  if(!$("#gestor").value){m.textContent="Selecciona el gestor.";return}
  if(!I.every(function(it){return S[it[1]]!=null})){m.textContent="Faltan criterios por calificar.";return}
  var t=$("#team").value,g=$("#gestor").value,id="e"+Date.now(),s={};for(var k in S)s[k]=S[k];
- var CE=(($("#ce")||{}).value||"").trim(),ENV=!!($("#ceEnviar")||{}).checked;cqAttachAudio(id).then(function(au){return put({au:au,ce:CE,id:id,ts:Date.now(),g:g,t:t,e:$("#eval").value,pa:$("#pais").value,tel:$("#tel").value,pd:$("#pd").value,cod:$("#cod").value,d:$("#fecha").value,k:T?"Titular":"Tercero",n:nota(),pn:pen(),o:$("#obs").value,s:s,af:AF.slice(),sg:SG,sge:SGE})}).then(function(){reset();FS=id;$("#ft").value=t;fillF();$("#fg").value=g;go(2);if(window.cqPrellenarCorreo){var c=$("#ce");if(c){c.dataset.auto="1";cqPrellenarCorreo()}}if(ENV&&CE&&window.cqEnviarFicha)setTimeout(function(){cqEnviarFicha(id,true)},300)}).catch(function(){if(m.textContent.indexOf("No se pudo subir")!==0)m.textContent="Para guardar, inicia sesión con tu correo (botón arriba a la derecha)."})};
+ if(window.cqPrellenarCorreo)cqPrellenarCorreo();var CE=(($("#ce")||{}).value||"").trim(),ENV=!!($("#ceEnviar")||{}).checked;cqAttachAudio(id).then(function(au){return put({au:au,ce:CE,id:id,ts:Date.now(),g:g,t:t,e:$("#eval").value,pa:$("#pais").value,tel:$("#tel").value,pd:$("#pd").value,cod:$("#cod").value,d:$("#fecha").value,k:T?"Titular":"Tercero",n:nota(),pn:pen(),o:$("#obs").value,s:s,af:AF.slice(),sg:SG,sge:SGE})}).then(function(){reset();FS=id;$("#ft").value=t;fillF();$("#fg").value=g;go(2);if(window.cqPrellenarCorreo){var c=$("#ce");if(c){c.dataset.auto="1";cqPrellenarCorreo()}}if(ENV&&CE&&window.cqEnviarFicha)setTimeout(function(){cqEnviarFicha(id,true)},300)}).catch(function(){if(m.textContent.indexOf("No se pudo subir")!==0)m.textContent="Para guardar, inicia sesión con tu correo (botón arriba a la derecha)."})};
 $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
 (async function(){
  var c=null;try{c=window.claude&&await claude.use("db")}catch(e){}
@@ -779,9 +782,11 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
   };
   // Prellenar el correo del evaluado al elegir el gestor
   window.cqCargarCorreos = function(){ var t = window.cqTok && cqTok(), u = window.cqUser && cqUser(); if (!t || !u || u.tipo !== 'evaluador') return Promise.resolve();
-    return cqRpc('cq_correos', {p_token:t}).then(function(m){ correos = m || {}; prellenar(); }).catch(function(){}); };
+    return cqRpc('cq_correos', {p_token:t}).then(function(m){ correos = m || {}; window.CQ_CORREOS = correos; prellenar(); }).catch(function(){}); };
   function prellenar(){ var g = document.getElementById('gestor'), ce = document.getElementById('ce'); if (!g || !ce || !correos) return;
-    if (!ce.value || ce.dataset.auto === '1'){ ce.value = correos[g.value] || ''; ce.dataset.auto = '1'; } }
+    var deOtro = Object.keys(correos).some(function(k){ return k !== g.value && correos[k] && correos[k].toLowerCase() === ce.value.trim().toLowerCase(); });
+    if (!ce.value || ce.dataset.auto === '1' || deOtro){ ce.value = correos[g.value] || ''; ce.dataset.auto = '1'; }
+    if (window.cqExtPinta) cqExtPinta(); }
   document.addEventListener('DOMContentLoaded', function(){
     var g = document.getElementById('gestor'), t = document.getElementById('team'), ce = document.getElementById('ce');
     if (g) g.addEventListener('change', function(){ if (ce) ce.dataset.auto = '1'; prellenar(); });
@@ -796,13 +801,17 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
 
 /* ===================== EXTENSIÓN ISSABEL POR GESTOR ===================== */
 (function(){
-  function chipHtml(g){ var x = extDe(g); return x ? '📞 Extensión Issabel <b>'+esc(x.x)+'</b>'+(x.a?' · '+esc(x.a):'')+' <button type="button" title="Copiar la extensión" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+esc(x.x)+'\').then(function(){toast(\'Extensión '+esc(x.x)+' copiada\')})">Copiar</button>' : ''; }
+  function copiar(t, msg){ return 'navigator.clipboard&&navigator.clipboard.writeText(\''+esc(t)+'\').then(function(){toast(\''+msg+'\')})'; }
+  function chipHtml(g){ var x = extDe(g), m = (window.CQ_CORREOS || {})[g] || ''; var u = window.cqUser && cqUser(); if (!m && u && u.tipo !== 'evaluador') m = u.email;
+    if (!x && !m) return '';
+    return (x ? '<span class="eb-i">📞 Extensión Issabel <b>'+esc(x.x)+'</b></span>'+(x.a ? '<span class="eb-i">🎧 '+esc(x.a)+'</span>' : '')+'<button type="button" class="eb-b" onclick="'+copiar(x.x,'Extensión '+x.x+' copiada')+'">Copiar extensión</button>' : '')
+      + (m ? '<span class="eb-sep"></span><span class="eb-i">✉️ '+esc(m)+'</span><button type="button" class="eb-b" onclick="'+copiar(m,'Correo copiado')+'">Copiar correo</button>' : ''); }
   function pinta(selId, chipId){ var sel = document.getElementById(selId), ch = document.getElementById(chipId); if (!sel || !ch) return; var h = chipHtml(sel.value); ch.innerHTML = h; ch.hidden = !h; }
   window.cqExtPinta = function(){ pinta('gestor','extEval'); pinta('fg','extFicha'); };
   document.addEventListener('DOMContentLoaded', function(){
-    var g = document.getElementById('gestor'); if (g){ var c = document.createElement('div'); c.id = 'extEval'; c.className = 'ext-chip'; c.hidden = true; g.parentNode.appendChild(c); g.addEventListener('change', cqExtPinta); }
+    var g = document.getElementById('gestor'); if (g) g.addEventListener('change', cqExtPinta);
     var t = document.getElementById('team'); if (t) t.addEventListener('change', function(){ setTimeout(cqExtPinta, 0); });
-    var fg = document.getElementById('fg'); if (fg){ var c2 = document.createElement('span'); c2.id = 'extFicha'; c2.className = 'ext-chip'; c2.hidden = true; fg.parentNode.appendChild(c2); fg.addEventListener('change', cqExtPinta); }
+    var fg = document.getElementById('fg'); if (fg){ var c2 = document.createElement('div'); c2.id = 'extFicha'; c2.className = 'ext-bar'; c2.hidden = true; var row = fg.closest('.row') || fg.parentNode; row.parentNode.insertBefore(c2, row.nextSibling); fg.addEventListener('change', cqExtPinta); }
     var ft = document.getElementById('ft'); if (ft) ft.addEventListener('change', function(){ setTimeout(cqExtPinta, 0); });
   });
   var _rer2 = rer; rer = function(){ _rer2.apply(this, arguments); try{ cqExtPinta(); if (CUR===5) cqExtTabla(); }catch(e){} };

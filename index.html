@@ -148,6 +148,11 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 
 .eml-aviso{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,22,80,.45);padding:20px}.eml-aviso[hidden]{display:none}
 .eml-box{background:var(--card);color:var(--tx);border-radius:18px;padding:20px 22px;max-width:440px;border-top:5px solid #FF5100;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}.eml-box p,.eml-box ol{font-size:14px;margin:8px 0}.eml-box small{color:var(--mu)}
+
+.ext-tag{display:inline-block;background:var(--bg);border:1px solid var(--bd);color:var(--ac);font-weight:800;border-radius:99px;padding:0 7px;font-size:11px}
+.ext-chip{display:inline-flex;align-items:center;gap:6px;margin-top:6px;background:#00216F;color:#fff;border-radius:99px;padding:3px 11px;font-size:12px;font-weight:800}
+.ext-chip[hidden]{display:none}.ext-chip button{border:0;background:rgba(255,255,255,.2);color:#fff;border-radius:99px;font:inherit;font-size:11px;padding:1px 8px;cursor:pointer}
+.ext-t td{padding:5px 8px!important}.ext-t input{width:90px;padding:5px 8px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -310,6 +315,7 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 <div id="rs"></div><div class="rk" id="rk"></div></div></div><div id="toast"></div>
 <div class="v" id="v6" hidden><div class="one" style="max-width:1200px" id="dsh"></div></div>
 <div class="v" id="v5" hidden><div class="one">
+<div class="card ev-only"><h2>📞 Extensiones Issabel</h2><small style="color:var(--mu)">Para buscar rápido las grabaciones de cada gestor en Issabel. Se muestran al evaluar, en Inicio y en las Fichas.</small><div id="extTabla" style="margin-top:10px"></div></div>
 <div class="card adm-only"><h2>Accesos · gestores y evaluadores</h2><small style="color:var(--mu)">Cada persona entra con su nombre completo y su correo (contraseña del equipo). <b>Gestor</b>: solo ve sus fichas y sube su firma. <b>Evaluador</b>: ve todo el panel. Si alguien se registró con un correo equivocado, desvincúlalo y que vuelva a entrar.</small><div id="acc" style="margin-top:10px"></div>
 <div class="f f4" style="margin-top:12px"><div><label>Nombre completo</label><input id="accN" list="cqNames" placeholder="Como aparece en la lista"></div><div><label>Correo</label><input id="accE" type="email" placeholder="nombre@grupopdc.com"></div><div><label>Acceso</label><select id="accT"><option value="evaluador">Evaluador · ve todo</option><option value="gestor">Gestor · solo sus fichas</option></select></div><div style="display:flex;align-items:flex-end"><button class="b" id="accAdd" type="button">Agregar / actualizar</button></div></div></div>
 <div class="card"><h2>Logos</h2><div class="up"><b>AVON</b><input type="file" accept="image/*" onchange="setLogo('AVON',this)"></div><div class="up"><b>PDC</b><input type="file" accept="image/*" onchange="setLogo('PDC',this)"></div></div>
@@ -339,7 +345,7 @@ function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 var $=function(s){return document.querySelector(s)};
 var RF={t:"",e:"",p:"m",k:"",o:"v"},META=1,EXP={},FIRST=1,ROOM=null,USR=null,PEERS=[],NAMES={};
-var DB=null,E=[],P=DP,LG={},S={},AF=[],T=true,SG="",SGE="",FIRMAS={},FS="",FF=1,CUR=0,tm;
+var DB=null,E=[],P=DP,LG={},S={},AF=[],T=true,SG="",SGE="",FIRMAS={},EXT={},FS="",FF=1,CUR=0,tm;
 function lvl(n){return n>=90?["g","Excelente"]:n>=70?["b","Muy bien"]:n>=30?["y","Necesita mejorar"]:["r","Crítico"]}
 function raw(){return I.reduce(function(a,it){return a+(S[it[1]]==null?0:it[2]*S[it[1]])},0)}
 function pen(){return AF.reduce(function(a,i){return a+AFL[i][1]},0)}
@@ -355,8 +361,10 @@ var DEF_LG={PDC:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQQAAACfCAYAAAAf3
 function lg(k){if(!LG[k]&&DEF_LG[k])return'<img src="'+DEF_LG[k]+'" alt="'+k+'">';return LG[k]?'<img src="'+LG[k]+'" alt="'+k+'">':'<b class="wm w'+k+'">'+k+'</b>'}
 function put(o){return DB?DB.collection("evals").doc(o.id).set(o):(E=E.filter(function(r){return r.id!==o.id}).concat([o]),sv("cq_e3",E),rer(),Promise.resolve())}
 function rm(id){if(DB)return DB.collection("evals").doc(id).delete();E=E.filter(function(r){return r.id!==id});sv("cq_e3",E);rer()}
+function extDe(g){var x=EXT&&EXT[g];return x&&x.x?x:null}
+function extTxt(g){var x=extDe(g);return x?("ext. "+x.x+(x.a?" · "+x.a:"")):""}
 function firmaDef(n){return (FIRMAS&&FIRMAS[n])||ld("cq_sg_"+n,"")}
-function cfg(){clearTimeout(tm);tm=setTimeout(function(){var o={a:P.a,b:P.b,e:P.e,AVON:LG.AVON||"",PDC:LG.PDC||"",meta:META,firmas:FIRMAS};if(DB)DB.doc("cfg/main").set(o);else{sv("cq_p3",o)}},700)}
+function cfg(){clearTimeout(tm);tm=setTimeout(function(){var o={a:P.a,b:P.b,e:P.e,AVON:LG.AVON||"",PDC:LG.PDC||"",meta:META,firmas:FIRMAS,ext:EXT};if(DB)DB.doc("cfg/main").set(o);else{sv("cq_p3",o)}},700)}
 function readImg(f,mw,png,cb){var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){var w=Math.min(mw,im.width),h=im.height*w/im.width,c=document.createElement("canvas");c.width=w;c.height=h;var x=c.getContext("2d");if(!png){x.fillStyle="#fff";x.fillRect(0,0,w,h)}x.drawImage(im,0,0,w,h);cb(c.toDataURL(png?"image/png":"image/jpeg",.72))};im.src=r.result};r.readAsDataURL(f)}
 function setLogo(k,el){if(el.files[0])readImg(el.files[0],300,true,function(u){LG[k]=u;cfg();rer()})}
 function go(n){CUR=n;document.querySelectorAll(".v").forEach(function(e){e.hidden=e.id!=="v"+n});document.querySelectorAll("nav button").forEach(function(b,i){b.classList.toggle("on",i===n)});rer();scrollTo(0,0);pres()}
@@ -364,7 +372,7 @@ function pick(t,g,f){if(f){$("#ft").value=t;fillF();$("#fg").value=g;FS="";go(2)
 function home(){var a=E,av=avg(a);
  $("#kp").innerHTML='<div><b>'+a.length+'</b><small>Evaluaciones</small></div><div><b>'+(av==null?"–":fx(av))+'</b><small>Promedio general</small></div><div><b>'+a.filter(function(r){return r.sg}).length+'</b><small>Firmadas</small></div><div><b>'+a.filter(function(r){return!r.sg}).length+'</b><small>Pendientes de firma</small></div>';
  $("#hm").innerHTML=TEAMS.map(function(t,k){return'<div class="card'+(k?" pk":"")+'"><h2>'+t+' · '+plist(t).length+' gestores</h2><div class="gs">'+plist(t).map(function(g){var l=ev(t,g),v=avg(l),c=v==null?"off":lvl(v)[0];
-  return'<div class="gc" style="--c:var(--'+c+')" data-t="'+esc(t)+'" data-g="'+esc(g)+'"><div class="rg" style="background:conic-gradient(var(--'+c+') '+(v||0)*3.6+'deg,var(--off) 0)"><span>'+(v==null?"–":Math.round(v))+'</span></div><div><b>'+esc(g)+'</b><small>'+l.length+' calificaciones</small><button class="fb">Ver fichas</button></div></div>'}).join("")+'</div></div>'}).join("")}
+  return'<div class="gc" style="--c:var(--'+c+')" data-t="'+esc(t)+'" data-g="'+esc(g)+'"><div class="rg" style="background:conic-gradient(var(--'+c+') '+(v||0)*3.6+'deg,var(--off) 0)"><span>'+(v==null?"–":Math.round(v))+'</span></div><div><b>'+esc(g)+'</b><small>'+(extDe(g)?'<span class="ext-tag">📞 '+esc(extTxt(g))+'</span> · ':'')+l.length+' calificaciones</small><button class="fb">Ver fichas</button></div></div>'}).join("")+'</div></div>'}).join("")}
 $("#hm").onclick=function(e){var c=e.target.closest(".gc");if(c)pick(c.dataset.t,c.dataset.g,!!e.target.closest(".fb"))};
 function setT(v){T=v;draw()}
 function tog(){return'<div class="tgb"><label><b>Tipo de contacto</b> · define cómo se califican los criterios</label><div class="tg"><button class="'+(T?"on":"")+'" onclick="setT(true)">Contacto con titular</button><button class="'+(T?"":"on")+'" onclick="setT(false)">Contacto con tercero</button></div></div>'}
@@ -396,7 +404,7 @@ function ficha(){var t=$("#ft").value,g=$("#fg").value,a=ev(t,g);
  +'<div class="kp"><div><b>'+fx(r.n)+'</b><small>Nota / 100</small></div><div><b style="color:var(--'+L[0]+')">'+L[1]+'</b><small>Nivel</small></div><div><b style="font-size:15px">'+esc(r.d)+'</b><small>Fecha</small></div><div><b style="font-size:12px">'+esc(r.k)+' · '+esc(r.pa)+'</b><small>Tipo · país</small></div><div><b style="font-size:12px">'+esc(r.tel||"–")+'</b><small>Número de contacto</small></div><div><b style="font-size:15px">'+esc(r.pd||"–")+'</b><small>PD</small></div><div><b style="font-size:15px">'+esc(r.cod||"–")+'</b><small>Código</small></div></div>'
  +(rows?'<table class="tn tf"><thead><tr><th>Criterio</th><th>Valor</th><th>Obtenido</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr class="pn"><td>Penalización auto-fail</td><td></td><td>'+(r.pn?"-"+r.pn:"0")+'</td></tr><tr><td>NOTA FINAL</td><td>100</td><td>'+fx(r.n)+'</td></tr></tfoot></table>':"")
  +(r.af&&r.af.length?'<p style="color:var(--r)"><b>Auto-fail:</b> '+r.af.map(function(i){return esc(AFL[i][0])}).join("; ")+'</p>':"")
- +'<p><b>Observaciones:</b> '+esc(r.o||"Sin observaciones")+'</p><div id="fau"></div>'+(r.env?'<p class="np" style="color:var(--mu);font-size:12.5px;margin:10px 0 0">✉️ Ficha enviada a <b>'+esc(r.env.para)+'</b> el '+esc(new Date(r.env.en).toLocaleString("es-GT"))+'</p>':(r.ce?'<p class="np" style="color:var(--mu);font-size:12.5px;margin:10px 0 0">Correo del evaluado: '+esc(r.ce)+' · aún no enviada</p>':''))+'<div class="sgs"><div><label>Firma del gestor (de enterado)</label><div class="sigbox">'+(r.sg?'<img src="'+r.sg+'" alt="firma">':"")+'</div><small>'+esc(r.g)+'</small></div><div><label>Firma del evaluador</label><div class="sigbox">'+(r.sge?'<img src="'+r.sge+'" alt="firma">':"")+'</div><small>'+esc(r.e)+'</small></div></div>';if(r&&window.cqAudioRender)cqAudioRender(r)}
+ +(extDe(r.g)?'<p class="np" style="font-size:12.5px;color:var(--mu);margin:4px 0">📞 Extensión Issabel: <b style="color:var(--ac)">'+esc(extDe(r.g).x)+'</b>'+(extDe(r.g).a?' · '+esc(extDe(r.g).a):'')+'</p>':'')+'<p><b>Observaciones:</b> '+esc(r.o||"Sin observaciones")+'</p><div id="fau"></div>'+(r.env?'<p class="np" style="color:var(--mu);font-size:12.5px;margin:10px 0 0">✉️ Ficha enviada a <b>'+esc(r.env.para)+'</b> el '+esc(new Date(r.env.en).toLocaleString("es-GT"))+'</p>':(r.ce?'<p class="np" style="color:var(--mu);font-size:12.5px;margin:10px 0 0">Correo del evaluado: '+esc(r.ce)+' · aún no enviada</p>':''))+'<div class="sgs"><div><label>Firma del gestor (de enterado)</label><div class="sigbox">'+(r.sg?'<img src="'+r.sg+'" alt="firma">':"")+'</div><small>'+esc(r.g)+'</small></div><div><label>Firma del evaluador</label><div class="sigbox">'+(r.sge?'<img src="'+r.sge+'" alt="firma">':"")+'</div><small>'+esc(r.e)+'</small></div></div>';if(r&&window.cqAudioRender)cqAudioRender(r)}
 function sign(el){var r=cur(),f=el.files[0];if(!r||!f)return;readImg(f,380,false,function(u){var o={};for(var k in r)o[k]=r[k];o.sg=u;put(o).catch(function(){$("#fm").textContent="Inicia sesión para guardar cambios."})});el.value=""}
 function signE(el){var r=cur(),f=el.files[0];if(!r||!f)return;readImg(f,380,false,function(u){var o={};for(var k in r)o[k]=r[k];o.sge=u;sv("cq_sg_"+r.e,u);put(o).catch(function(){$("#fm").textContent="Inicia sesión para guardar cambios."})});el.value=""}
 function mover(){var r=cur(),v=$("#mv").value,m=$("#fm");if(!r||v.indexOf("ym:")!==0)return;var q=v.slice(3).split("-"),o={};for(var k in r)o[k]=r[k];o.ts=new Date(+q[0],+q[1]-1,15,12).getTime();put(o).then(function(){m.style.color="var(--g)";m.textContent="Evaluación movida a "+$("#mv").selectedOptions[0].text+"."}).catch(function(){m.style.color="";m.textContent="Inicia sesión para guardar cambios."})}
@@ -460,7 +468,7 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
  var c=null;try{c=window.claude&&await claude.use("db")}catch(e){}
  if(c){DB=c;initLive();
   DB.collection("evals").onSnapshot(function(s){if(!FIRST)s.docChanges().forEach(function(c){if(c.type==="added"){var d=c.doc.data();toast("Nueva evaluación: "+d.g+" · "+fx(d.n))}});FIRST=0;E=s.docs.map(function(d){var o=d.data();o.id=d.id;return o}).sort(function(a,b){return(a.ts||0)-(b.ts||0)});rer()},function(){});
-  DB.doc("cfg/main").onSnapshot(function(s){var o=s.exists?s.data():null;if(o){P={a:o.a||DP.a,b:o.b||DP.b,e:o.e||DP.e};META=o.meta||1;LG={AVON:o.AVON||"",PDC:o.PDC||""};FIRMAS=o.firmas||{};if(!SGE&&$("#eval")&&$("#eval").value){SGE=firmaDef($("#eval").value);if(SGE)sgDraw()}rer()}},function(){})}
+  DB.doc("cfg/main").onSnapshot(function(s){var o=s.exists?s.data():null;if(o){P={a:o.a||DP.a,b:o.b||DP.b,e:o.e||DP.e};META=o.meta||1;LG={AVON:o.AVON||"",PDC:o.PDC||""};FIRMAS=o.firmas||{};EXT=o.ext||{};if(!SGE&&$("#eval")&&$("#eval").value){SGE=firmaDef($("#eval").value);if(SGE)sgDraw()}rer()}},function(){})}
  else{initLive();$("#md").textContent="Modo local (los datos solo se guardan en este navegador)";E=ld("cq_e3",[]);var o=ld("cq_p3",null);if(o){P=o;META=o.meta||1;LG={AVON:o.AVON||"",PDC:o.PDC||""}}rer()}
 })();
 </script><script>
@@ -781,6 +789,32 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
     if (ce) ce.addEventListener('input', function(){ ce.dataset.auto = '0'; });
   });
   window.cqPrellenarCorreo = prellenar;
+})();
+
+</script>
+<script>
+
+/* ===================== EXTENSIÓN ISSABEL POR GESTOR ===================== */
+(function(){
+  function chipHtml(g){ var x = extDe(g); return x ? '📞 Extensión Issabel <b>'+esc(x.x)+'</b>'+(x.a?' · '+esc(x.a):'')+' <button type="button" title="Copiar la extensión" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+esc(x.x)+'\').then(function(){toast(\'Extensión '+esc(x.x)+' copiada\')})">Copiar</button>' : ''; }
+  function pinta(selId, chipId){ var sel = document.getElementById(selId), ch = document.getElementById(chipId); if (!sel || !ch) return; var h = chipHtml(sel.value); ch.innerHTML = h; ch.hidden = !h; }
+  window.cqExtPinta = function(){ pinta('gestor','extEval'); pinta('fg','extFicha'); };
+  document.addEventListener('DOMContentLoaded', function(){
+    var g = document.getElementById('gestor'); if (g){ var c = document.createElement('div'); c.id = 'extEval'; c.className = 'ext-chip'; c.hidden = true; g.parentNode.appendChild(c); g.addEventListener('change', cqExtPinta); }
+    var t = document.getElementById('team'); if (t) t.addEventListener('change', function(){ setTimeout(cqExtPinta, 0); });
+    var fg = document.getElementById('fg'); if (fg){ var c2 = document.createElement('span'); c2.id = 'extFicha'; c2.className = 'ext-chip'; c2.hidden = true; fg.parentNode.appendChild(c2); fg.addEventListener('change', cqExtPinta); }
+    var ft = document.getElementById('ft'); if (ft) ft.addEventListener('change', function(){ setTimeout(cqExtPinta, 0); });
+  });
+  var _rer2 = rer; rer = function(){ _rer2.apply(this, arguments); try{ cqExtPinta(); if (CUR===5) cqExtTabla(); }catch(e){} };
+  // Edición en "Equipos y logos" (evaluadores)
+  window.cqExtTabla = function(){
+    var box = document.getElementById('extTabla'); if (!box) return;
+    var gs = TEAMS.reduce(function(o,t){ return o.concat(plist(t).map(function(g){ return {t:t, g:g}; })); }, []);
+    box.innerHTML = '<table class="tn ext-t"><thead><tr><th>Gestor</th><th>Equipo</th><th>Extensión</th><th>Agente</th></tr></thead><tbody>' + gs.map(function(x){ var e = EXT[x.g] || {};
+      return '<tr data-g="'+esc(x.g)+'"><td style="text-align:left">'+esc(x.g)+'</td><td>'+esc(x.t)+'</td><td><input class="ex-x" value="'+esc(e.x||'')+'" placeholder="11xx"></td><td><input class="ex-a" value="'+esc(e.a||'')+'" placeholder="Agente #"></td></tr>'; }).join('') + '</tbody></table>';
+    box.querySelectorAll('input').forEach(function(inp){ inp.onchange = function(){ var tr = inp.closest('tr'), g = tr.dataset.g, x = tr.querySelector('.ex-x').value.trim(), a = tr.querySelector('.ex-a').value.trim();
+      if (x || a) EXT[g] = {x:x, a:a}; else delete EXT[g]; cfg(); cqExtPinta(); toast('Extensión de '+g+' guardada'); }; });
+  };
 })();
 
 </script>

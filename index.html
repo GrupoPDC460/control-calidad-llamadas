@@ -748,11 +748,15 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
         + '<p><a href="'+link+'" style="display:inline-block;background:#00216F;color:#ffffff;padding:10px 20px;border-radius:999px;text-decoration:none;font-weight:bold">Ver mi ficha de calidad</a></p>'
         + '<p style="color:#606060;font-size:12px">Si el botón no abre, copia este enlace: '+link+'<br>Entra con tu nombre completo, tu correo de trabajo y la contraseña del equipo.</p>'
         + '<p>Saludos,<br><b>'+esc(me.nombre||'')+'</b><br><span style="color:#606060;font-size:12px">'+esc(me.email||'')+'</span></p></div></div>';
-      var eml = cqArmarEml({para: para, cc: copia==='si' ? me.email : '', asunto: asunto, html: html});
-      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], {type:'message/rfc822'}));
-      a.download = ('Correo para '+r.g+' - '+r.d+'.eml').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\\/:*?"<>|]/g,'-');
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
-      cqAvisoEml(para);
+      // El "nuevo Outlook" no abre bien los .eml; se abre Outlook DIRECTO (sin descargar nada) con el mensaje y el enlace,
+      // y además se copia la versión con diseño de PDC por si la quieren pegar (Ctrl+V).
+      var texto = 'Hola '+r.g+',\n\nTe comparto el resultado de tu evaluación de calidad de la llamada del '+r.d+': obtuviste '+fx(r.n)+' de 100 ('+lvl(r.n)[1]+').\n\n'
+        + 'Puedes ver el detalle de cada criterio, las observaciones, escuchar el audio y firmar tu ficha aquí:\n'+link+'\n\n'
+        + 'Entra con tu nombre completo, tu correo de trabajo y la contraseña del equipo.\n\nSaludos,\n'+(me.nombre||'');
+      var copiado = false;
+      try{ if (navigator.clipboard && window.ClipboardItem){ navigator.clipboard.write([new ClipboardItem({'text/html': new Blob([html], {type:'text/html'}), 'text/plain': new Blob([texto], {type:'text/plain'})})]).then(function(){ copiado = true; }).catch(function(){}); } }catch(e){}
+      location.href = 'mailto:'+encodeURIComponent(para)+'?'+(copia==='si' && me.email ? 'cc='+encodeURIComponent(me.email)+'&' : '')+'subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(texto);
+      setTimeout(function(){ cqAvisoMail(para, copiado); }, 400);
       post({modo:'outlook'}).catch(function(){});
     }).catch(function(){ toast('No se pudo preparar el correo. Revisa tu conexión.'); });
   };
@@ -772,6 +776,14 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
       '--'+bnd, 'Content-Type: application/pdf; name="'+ascii+'"', 'Content-Transfer-Encoding: base64',
       'Content-Disposition: attachment; filename="'+ascii+'"; filename*=UTF-8\'\''+encodeURIComponent(o.adjunto), '', wrap76(o.b64), '', '--'+bnd+'--', '');
     return L.join('\r\n');
+  };
+  window.cqAvisoMail = function(para, copiado){
+    var m = document.getElementById('emlAviso');
+    if (!m){ m = document.createElement('div'); m.id = 'emlAviso'; m.className = 'eml-aviso'; document.body.appendChild(m); }
+    m.innerHTML = '<div class="eml-box"><b>✉️ Correo abierto para '+esc(para)+'</b><p>Se abrió <b>Outlook</b> con el destinatario, el asunto y el mensaje con el enlace a su ficha. Solo revisa y da <b>Enviar</b>.</p>'
+      + (copiado ? '<p>💡 <b>¿Lo quieres con el diseño de PDC?</b> Ya está copiado: en el mensaje selecciona todo el texto (Ctrl+A) y pega (Ctrl+V).</p>' : '')
+      + '<div style="text-align:right;margin-top:10px"><button class="b" type="button" onclick="this.closest(\'.eml-aviso\').hidden=true">Entendido</button></div></div>';
+    m.hidden = false;
   };
   window.cqAvisoEml = function(para){
     var m = document.getElementById('emlAviso');

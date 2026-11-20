@@ -739,14 +739,21 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
     post({}).then(function(res){
       if (res.ok){ toast('✉️ Ficha enviada a '+para+'.'); return; }
       if (res.error !== 'sin_proveedor'){ toast('No se pudo enviar ('+(res.error||'error')+').'); return; }
-      // Sin envío automático: se abre TU correo con el mensaje listo (sin adjunto; el enlace lleva directo a su ficha)
-      var me = cqUser() || {}, asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n);
-      var cuerpo = 'Hola '+r.g+',\n\nTe comparto el resultado de tu evaluación de calidad de la llamada del '+r.d+': obtuviste '+fx(r.n)+' de 100 ('+lvl(r.n)[1]+').\n\n'
-        + 'Puedes ver el detalle de cada criterio, las observaciones, escuchar el audio y firmar tu ficha aquí:\n'+cqEnlaceFicha(r)+'\n\n'
-        + 'Entra con tu nombre completo, tu correo de trabajo y la contraseña del equipo.\n\nSaludos,\n'+(me.nombre||'');
-      location.href = 'mailto:'+encodeURIComponent(para)+'?'+(copia==='si' && me.email ? 'cc='+encodeURIComponent(me.email)+'&' : '')+'subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
+      // Sin envío automático: correo listo (.eml) con el formato de PDC y el botón "Ver mi ficha" (SIN adjunto: la ficha está en el enlace)
+      var me = cqUser() || {}, asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n), link = cqEnlaceFicha(r);
+      var html = '<div style="font-family:Arial,sans-serif;color:#0F141B;max-width:560px"><div style="background:#00216F;color:#fff;padding:14px 18px;border-bottom:4px solid #FF5100"><b style="font-size:17px">Control y Calidad de Llamadas</b><br><span style="font-size:12px">Grupo PDC · AVON</span></div>'
+        + '<div style="padding:16px 18px"><p>Hola <b>'+esc(r.g)+'</b>,</p><p>Te comparto el resultado de tu evaluación de calidad de la llamada del <b>'+esc(r.d)+'</b>:</p>'
+        + '<p style="font-size:30px;margin:8px 0;color:#FF5100"><b>'+fx(r.n)+'</b><span style="font-size:15px;color:#606060"> / 100 · '+esc(lvl(r.n)[1])+'</span></p>'
+        + '<p>Puedes ver el detalle de cada criterio, las observaciones, escuchar el audio y firmar tu ficha aquí:</p>'
+        + '<p><a href="'+link+'" style="display:inline-block;background:#00216F;color:#ffffff;padding:10px 20px;border-radius:999px;text-decoration:none;font-weight:bold">Ver mi ficha de calidad</a></p>'
+        + '<p style="color:#606060;font-size:12px">Si el botón no abre, copia este enlace: '+link+'<br>Entra con tu nombre completo, tu correo de trabajo y la contraseña del equipo.</p>'
+        + '<p>Saludos,<br><b>'+esc(me.nombre||'')+'</b><br><span style="color:#606060;font-size:12px">'+esc(me.email||'')+'</span></p></div></div>';
+      var eml = cqArmarEml({para: para, cc: copia==='si' ? me.email : '', asunto: asunto, html: html});
+      var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], {type:'message/rfc822'}));
+      a.download = ('Correo para '+r.g+' - '+r.d+'.eml').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\\/:*?"<>|]/g,'-');
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      cqAvisoEml(para);
       post({modo:'outlook'}).catch(function(){});
-      toast('Se abrió tu correo con el mensaje listo para '+para+': solo da Enviar.');
     }).catch(function(){ toast('No se pudo preparar el correo. Revisa tu conexión.'); });
   };
   // Correo .eml (borrador sin enviar) con el PDF adjunto
@@ -754,6 +761,9 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
   function wrap76(t){ return t.replace(/(.{76})/g, '$1\r\n'); }
   function hdr(t){ return /^[\x20-\x7e]*$/.test(t) ? t : '=?UTF-8?B?'+b64utf8(t)+'?='; }
   window.cqArmarEml = function(o){
+    if (!o.b64){ var H = ['To: '+o.para]; if (o.cc) H.push('Cc: '+o.cc);
+      H.push('Subject: '+hdr(o.asunto), 'X-Unsent: 1', 'MIME-Version: 1.0', 'Content-Type: text/html; charset="utf-8"', 'Content-Transfer-Encoding: base64', '', wrap76(b64utf8(o.html)), '');
+      return H.join('\r\n'); }
     var bnd = '----=_PDC_' + Date.now().toString(36), ascii = o.adjunto.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7e]/g,'_');
     var L = ['To: '+o.para];
     if (o.cc) L.push('Cc: '+o.cc);
@@ -766,7 +776,7 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
   window.cqAvisoEml = function(para){
     var m = document.getElementById('emlAviso');
     if (!m){ m = document.createElement('div'); m.id = 'emlAviso'; m.className = 'eml-aviso'; document.body.appendChild(m); }
-    m.innerHTML = '<div class="eml-box"><b>✉️ Correo listo para '+esc(para)+'</b><p>Se descargó un archivo de correo <b>.eml</b> que ya trae el <b>PDF adjunto</b>, el destinatario, el asunto y el mensaje.</p>'
+    m.innerHTML = '<div class="eml-box"><b>✉️ Correo listo para '+esc(para)+'</b><p>Se descargó un correo listo (<b>.eml</b>) con el destinatario, el asunto y el mensaje con el botón <b>"Ver mi ficha de calidad"</b>. No lleva adjunto: la ficha completa está en el enlace.</p>'
       + '<ol><li>Ábrelo desde las descargas del navegador (doble clic).</li><li>Se abre en <b>Outlook</b> como mensaje nuevo desde tu cuenta.</li><li>Revisa y da <b>Enviar</b>.</li></ol>'
       + '<small>El envío 100% automático se activa cuando TI configure el correo del sistema.</small><div style="text-align:right;margin-top:10px"><button class="b" type="button" onclick="this.closest(\'.eml-aviso\').hidden=true">Entendido</button></div></div>';
     m.hidden = false;

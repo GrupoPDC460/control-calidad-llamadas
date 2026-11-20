@@ -304,7 +304,7 @@ body.cq-gestor nav button:not(:nth-child(3)){display:none}
 <div class="v" id="v2" hidden><div class="one">
 <div class="card np"><div class="f"><div><label>Equipo</label><select id="ft"></select></div><div><label>Gestor</label><select id="fg"></select></div></div>
 <label style="margin-top:12px">Elige la calificación que quieres ver o imprimir</label><div id="fl"></div>
-<div class="row"><button class="b" onclick="print()">Imprimir esta ficha</button><button class="b s" id="dlb" onclick="cqDescargarPdf()">📄 Descargar PDF</button><button class="b s ev-only" onclick="cqEnviarFicha(FS,false)">✉️ Enviar por correo</button><label class="b s" style="margin:0"><span class="ev-only">Subir firma del gestor</span><span class="ge-only">✍️ Subir mi firma</span><input type="file" accept="image/*" hidden onchange="sign(this)"></label><label class="b s ev-only" style="margin:0">🎧 Subir audio<input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.opus,.amr,.gsm,.wma,.aac,.flac" hidden onchange="cqAudioFicha(this)"></label><label class="b s ev-only" style="margin:0">Subir firma del evaluador<input type="file" accept="image/*" hidden onchange="signE(this)"></label><span class="ev-only" style="display:inline-flex;gap:6px;align-items:center"><select id="mv" style="width:auto"></select><button class="b s" onclick="mover()">Cambiar mes de evaluación</button></span><button class="b s ev-only" onclick="del()">Eliminar</button></div><div class="msg" id="fm"></div></div>
+<div class="row"><button class="b" onclick="print()">Imprimir esta ficha</button><button class="b s" id="dlb" onclick="cqDescargarPdf()">📄 Descargar PDF</button><button class="b s ev-only" onclick="cqEnviarFicha(FS,false)">✉️ Enviar por correo</button><button class="b s ev-only" onclick="cqCopiarEnlace(false)" title="Copia el enlace directo a esta ficha para que el gestor la vea y suba su firma">🔗 Copiar enlace</button><button class="b s ev-only" onclick="cqCopiarEnlace(true)" title="Copia un mensaje listo con el enlace, para Teams o WhatsApp">💬 Copiar mensaje</button><label class="b s" style="margin:0"><span class="ev-only">Subir firma del gestor</span><span class="ge-only">✍️ Subir mi firma</span><input type="file" accept="image/*" hidden onchange="sign(this)"></label><label class="b s ev-only" style="margin:0">🎧 Subir audio<input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.opus,.amr,.gsm,.wma,.aac,.flac" hidden onchange="cqAudioFicha(this)"></label><label class="b s ev-only" style="margin:0">Subir firma del evaluador<input type="file" accept="image/*" hidden onchange="signE(this)"></label><span class="ev-only" style="display:inline-flex;gap:6px;align-items:center"><select id="mv" style="width:auto"></select><button class="b s" onclick="mover()">Cambiar mes de evaluación</button></span><button class="b s ev-only" onclick="del()">Eliminar</button></div><div class="msg" id="fm"></div></div>
 <div class="card pk" id="ficha"></div></div></div>
 
 <div class="v" id="v3" hidden><div class="one"><div class="card"><h2>Fichas firmadas y pendientes</h2><div class="tg" style="max-width:420px"><button id="f1" onclick="FF=1;firm()">Firmadas</button><button id="f0" onclick="FF=0;firm()">Pendientes de firma</button></div><div id="fi" style="margin-top:12px"></div></div></div></div>
@@ -844,6 +844,19 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
       if (x || a) EXT[g] = {x:x, a:a}; else delete EXT[g]; cfg(); cqExtPinta(); toast('Extensión de '+g+' guardada'); }; });
   };
 })();
+
+</script>
+<script>
+
+/* Copiar el enlace directo de la ficha (para que el gestor la vea y suba su firma) */
+window.cqCopiarEnlace = function(conMensaje){
+  var r = cur(); if (!r){ toast('Elige una ficha primero.'); return; }
+  var link = cqEnlaceFicha(r);
+  var txt = !conMensaje ? link : 'Hola '+r.g+', ya está lista tu evaluación de calidad de la llamada del '+r.d+' (nota '+fx(r.n)+' de 100 · '+lvl(r.n)[1]+').\n\nRevísala y sube tu firma aquí:\n'+link+'\n\nEntra con tu nombre completo, tu correo de trabajo y la contraseña del equipo.';
+  var ok = function(){ toast(conMensaje ? 'Mensaje con el enlace copiado: pégalo en Teams, WhatsApp o correo.' : 'Enlace copiado: pégalo donde quieras enviarlo.'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok).catch(function(){ prompt('Copia el texto:', txt); });
+  else prompt('Copia el texto:', txt);
+};
 
 </script>
 </body></html>

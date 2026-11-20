@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8">
+<html lang="es" data-theme="light"><head><meta name="color-scheme" content="light"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Control y Calidad de Llamadas · AVON · PDC</title>
 <style>
@@ -725,39 +725,30 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
   window.cqDescargarPdf = function(){ var r = cur(); if (!r) return; toast('Generando PDF…');
     cqFichaPdf(r).then(function(doc){ doc.save(nombreArchivo(r)); }).catch(function(){ toast('No se pudo generar el PDF.'); }); };
   // Enviar por correo (evaluadores)
+  var APP = 'https://control-calidad-llamadas.vercel.app/';
+  window.cqEnlaceFicha = function(r){ return APP + '?ficha=' + encodeURIComponent(r.id); };
   window.cqEnviarFicha = function(id, auto){
     var r = E.filter(function(x){ return x.id === id; })[0] || cur(); if (!r) return;
     var para = (r.ce || '').trim();
-    if (!auto){ para = prompt('Correo del evaluado para enviarle el PDF:', para || (correos && correos[r.g]) || ''); if (!para) return; }
+    if (!auto){ para = prompt('Correo del evaluado para enviarle su ficha:', para || (correos && correos[r.g]) || ''); if (!para) return; }
     if (!para) return;
     var tok = window.cqTok && cqTok(); if (!tok) return;
-    toast('Generando y enviando el PDF a '+para+'…');
-    cqFichaPdf(r).then(function(doc){
-      var b64 = doc.output('datauristring').split(',')[1];
-      return fetch(FN, {method:'POST', headers:{'Content-Type':'application/json', apikey:KEY}, body: JSON.stringify({token:tok, id:r.id, para:para, pdf:b64, copia: (document.getElementById('ceCopia')||{}).checked ? 'si' : 'no'})})
-        .then(function(x){ return x.json(); }).then(function(res){
-          if (res.ok){ toast('✉️ Ficha enviada a '+para+'.'); return; }
-          if (res.error === 'sin_proveedor'){
-            // Sin envío automático: se arma un CORREO LISTO (.eml) con el PDF ADJUNTO. Al abrirlo, Outlook lo muestra como
-            // mensaje nuevo desde tu propia cuenta, con destinatario, asunto, texto y PDF; solo falta dar Enviar.
-            var me = cqUser() || {}, asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n);
-            var html = '<div style="font-family:Arial,sans-serif;color:#0F141B;max-width:560px"><div style="background:#00216F;color:#fff;padding:14px 18px;border-bottom:4px solid #FF5100"><b style="font-size:17px">Control y Calidad de Llamadas</b><br><span style="font-size:12px">Grupo PDC · AVON</span></div>'
-              + '<div style="padding:16px 18px"><p>Hola <b>'+esc(r.g)+'</b>,</p><p>Te comparto el resultado de tu evaluación de calidad de la llamada del <b>'+esc(r.d)+'</b>.</p>'
-              + '<p style="font-size:30px;margin:8px 0;color:#FF5100"><b>'+fx(r.n)+'</b><span style="font-size:15px;color:#606060"> / 100</span></p>'
-              + '<p>En el PDF adjunto está el detalle de cada criterio y las observaciones. También puedes verla, escuchar el audio y firmarla en <a href="https://control-calidad-llamadas.vercel.app">Control y Calidad de Llamadas</a> con tu nombre completo y tu correo.</p>'
-              + '<p>Saludos,<br><b>'+esc(me.nombre||'')+'</b></p></div></div>';
-            var eml = cqArmarEml({para: para, cc: (document.getElementById('ceCopia')||{}).checked ? me.email : '', asunto: asunto, html: html, adjunto: nombreArchivo(r), b64: b64});
-            var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([eml], {type:'message/rfc822'}));
-            a.download = ('Correo para '+r.g+' - '+r.d+'.eml').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\\/:*?"<>|]/g,'-');
-            document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
-            cqAvisoEml(para);
-            return;
-          }
-          toast('No se pudo enviar ('+(res.error||'error')+').');
-        });
-    }).catch(function(){ toast('No se pudo generar el PDF.'); });
+    var copia = (document.getElementById('ceCopia')||{}).checked ? 'si' : 'no';
+    var post = function(extra){ var b = {token:tok, id:r.id, para:para, copia:copia}; for (var k in extra) b[k] = extra[k];
+      return fetch(FN, {method:'POST', headers:{'Content-Type':'application/json', apikey:KEY}, body: JSON.stringify(b)}).then(function(x){ return x.json(); }); };
+    post({}).then(function(res){
+      if (res.ok){ toast('✉️ Ficha enviada a '+para+'.'); return; }
+      if (res.error !== 'sin_proveedor'){ toast('No se pudo enviar ('+(res.error||'error')+').'); return; }
+      // Sin envío automático: se abre TU correo con el mensaje listo (sin adjunto; el enlace lleva directo a su ficha)
+      var me = cqUser() || {}, asunto = 'Resultado de tu evaluación de calidad · '+r.d+' · Nota '+fx(r.n);
+      var cuerpo = 'Hola '+r.g+',\n\nTe comparto el resultado de tu evaluación de calidad de la llamada del '+r.d+': obtuviste '+fx(r.n)+' de 100 ('+lvl(r.n)[1]+').\n\n'
+        + 'Puedes ver el detalle de cada criterio, las observaciones, escuchar el audio y firmar tu ficha aquí:\n'+cqEnlaceFicha(r)+'\n\n'
+        + 'Entra con tu nombre completo, tu correo de trabajo y la contraseña del equipo.\n\nSaludos,\n'+(me.nombre||'');
+      location.href = 'mailto:'+encodeURIComponent(para)+'?'+(copia==='si' && me.email ? 'cc='+encodeURIComponent(me.email)+'&' : '')+'subject='+encodeURIComponent(asunto)+'&body='+encodeURIComponent(cuerpo);
+      post({modo:'outlook'}).catch(function(){});
+      toast('Se abrió tu correo con el mensaje listo para '+para+': solo da Enviar.');
+    }).catch(function(){ toast('No se pudo preparar el correo. Revisa tu conexión.'); });
   };
-
   // Correo .eml (borrador sin enviar) con el PDF adjunto
   function b64utf8(t){ return btoa(unescape(encodeURIComponent(t))); }
   function wrap76(t){ return t.replace(/(.{76})/g, '$1\r\n'); }
@@ -814,7 +805,13 @@ $("#fecha").valueAsDate=new Date();sgDraw();draw();go(0);
     var fg = document.getElementById('fg'); if (fg){ var c2 = document.createElement('div'); c2.id = 'extFicha'; c2.className = 'ext-bar'; c2.hidden = true; var row = fg.closest('.row') || fg.parentNode; row.parentNode.insertBefore(c2, row.nextSibling); fg.addEventListener('change', cqExtPinta); }
     var ft = document.getElementById('ft'); if (ft) ft.addEventListener('change', function(){ setTimeout(cqExtPinta, 0); });
   });
-  var _rer2 = rer; rer = function(){ _rer2.apply(this, arguments); try{ cqExtPinta(); if (CUR===5) cqExtTabla(); }catch(e){} };
+  var _rer2 = rer; rer = function(){ _rer2.apply(this, arguments); try{ cqExtPinta(); if (CUR===5) cqExtTabla(); cqAbrirFichaUrl(); }catch(e){} };
+  window.cqAbrirFichaUrl = function(){
+    var id = new URLSearchParams(location.search).get('ficha'); if (!id || window.__fichaUrl || !(window.cqUser && cqUser())) return;
+    var r = E.filter(function(x){ return x.id === id; })[0]; if (!r) return;
+    window.__fichaUrl = 1; FS = id; $('#ft').value = r.t; fillF(); $('#fg').value = r.g; go(2);
+    try{ history.replaceState(null, '', location.pathname); }catch(e){}
+  };
   // Edición en "Equipos y logos" (evaluadores)
   window.cqExtTabla = function(){
     var box = document.getElementById('extTabla'); if (!box) return;
